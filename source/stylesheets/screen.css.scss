@@ -83,6 +83,9 @@ html, body {
   &>img {
     display: block;
     max-width: 100%;
+    width: 80px;
+    height: 30px;
+    margin: 15px 0 20px 15px;
   }
 
   &>.search {
