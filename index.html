@@ -4,10 +4,8 @@
     <meta charset="utf-8">
     <meta content="IE=edge,chrome=1" http-equiv="X-UA-Compatible">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-    <title>API Reference</title>
+    <title>Whisk API Reference</title>
 
-    <link href="stylesheets/screen.css" rel="stylesheet" media="screen" />
-    <link href="stylesheets/print.css" rel="stylesheet" media="print" />
     <style>
       .highlight table td { padding: 5px; }
 .highlight table pre { margin: 0; }
@@ -88,10 +86,12 @@
   color: #90a959;
 }
     </style>
+    <link href="stylesheets/screen.css" rel="stylesheet" media="screen" />
+    <link href="stylesheets/print.css" rel="stylesheet" media="print" />
       <script src="javascripts/all.js"></script>
   </head>
 
-  <body class="index" data-languages="[&quot;shell&quot;,&quot;ruby&quot;,&quot;python&quot;]">
+  <body class="index" data-languages="[&quot;shell&quot;]">
     <a href="#" id="nav-button">
       <span>
         NAV
@@ -102,8 +102,6 @@
       <img src="images/logo.png" />
         <div class="lang-selector">
               <a href="#" data-language-name="shell">shell</a>
-              <a href="#" data-language-name="ruby">ruby</a>
-              <a href="#" data-language-name="python">python</a>
         </div>
         <div class="search">
           <input type="text" class="search" id="input-search" placeholder="Search">
@@ -119,228 +117,422 @@
     <div class="page-wrapper">
       <div class="dark-box"></div>
       <div class="content">
-        <h1 id="introduction">Introduction</h1>
+        <h1 id="oauth">OAuth</h1>
 
-<p>Welcome to the Kittn API! You can use our API to access Kittn API endpoints, which can get information on various cats, kittens, and breeds in our database.</p>
+<p>The Whisk API is secured using a standard pattern for API authentication and authorisation.
+This mechanism follows closely the method used by Twitter for securing its API.</p>
 
-<p>We have language bindings in Shell, Ruby, and Python! You can view code examples in the dark area to the right, and you can switch the programming language of the examples with the tabs in the top right.</p>
+<p>Each client has a unique <code class="prettyprint">consumerKey</code> and <code class="prettyprint">consumerSecret</code> pair. 
+The key is submitted along with requests to the API; the secret must never be submitted to the API, or disclosed to anyone else. 
+The secret is used to “sign” the request, but the secret must not be sent in requests.</p>
 
-<p>This example API documentation page was created with <a href="https://github.com/tripit/slate">Slate</a>. Feel free to edit it and use it as a base for your own API&rsquo;s documentation.</p>
+<h2 id="authorizing-a-request">Authorizing a request</h2>
 
-<h1 id="authentication">Authentication</h1>
-
-<blockquote>
-<p>To authorize, use this code:</p>
-</blockquote>
-<pre class="highlight ruby"><code><span class="nb">require</span> <span class="s1">'kittn'</span>
-
-<span class="n">api</span> <span class="o">=</span> <span class="no">Kittn</span><span class="o">::</span><span class="no">APIClient</span><span class="p">.</span><span class="nf">authorize!</span><span class="p">(</span><span class="s1">'meowmeowmeow'</span><span class="p">)</span>
-</code></pre>
-<pre class="highlight python"><code><span class="kn">import</span> <span class="nn">kittn</span>
-
-<span class="n">api</span> <span class="o">=</span> <span class="n">kittn</span><span class="o">.</span><span class="n">authorize</span><span class="p">(</span><span class="s">'meowmeowmeow'</span><span class="p">)</span>
-</code></pre>
-<pre class="highlight shell"><code><span class="c"># With shell, you can just pass the correct header with each request</span>
-curl <span class="s2">"api_endpoint_here"</span>
-  -H <span class="s2">"Authorization: meowmeowmeow"</span>
-</code></pre>
+<p>Whisk’s implementation requires that requests needing authorization contain an additional HTTP <strong>Authorization</strong> header with all necessary information to corretly identify and authorize client app.</p>
 
 <blockquote>
-<p>Make sure to replace <code class="prettyprint">meowmeowmeow</code> with your API key.</p>
+<p>Example request with Authorization header</p>
 </blockquote>
+<pre class="highlight shell"><code>curl -v -X GET -H <span class="s2">"Authorization: OAuth oauth_consumer_key=</span><span class="se">\"</span><span class="s2">80995584</span><span class="se">\"</span><span class="s2">,oauth_signature_method=</span><span class="se">\"</span><span class="s2">HMAC-SHA1</span><span class="se">\"</span><span class="s2">,oauth_timestamp=</span><span class="se">\"</span><span class="s2">1318622958</span><span class="se">\"</span><span class="s2">,oauth_nonce=</span><span class="se">\"</span><span class="s2">T1kbXU</span><span class="se">\"</span><span class="s2">,oauth_version=</span><span class="se">\"</span><span class="s2">1.0</span><span class="se">\"</span><span class="s2">,oauth_signature=</span><span class="se">\"</span><span class="s2">ZzVq1pzrooLm%2BgpjNzF0Yuj6P2I%3D</span><span class="se">\"</span><span class="s2">"</span> <span class="s2">"https://api.whisk.com/inventory/v1/basket?recipeUrl=https://www.asdagoodliving.co.uk/food/recipes/banana-fritters&amp;inventory=Asda&amp;region=GB"</span>
+</code></pre>
 
-<p>Kittn uses API keys to allow access to the API. You can register a new Kittn API key at our <a href="http://example.com/developers">developer portal</a>.</p>
+<h3 id="collecting-parameters">Collecting parameters</h3>
 
-<p>Kittn expects for the API key to be included in all API requests to the server in a header that looks like the following:</p>
+<p>You should be able to see that the header contains 6 key/value pairs, where the keys all begin with the string “oauth_”. For any given Whisk API request, collecting these 6 values and creating a similar header will allow you to specify authorization for the request. How each value was generated is described below:</p>
 
-<p><code class="prettyprint">Authorization: meowmeowmeow</code></p>
+<p><strong>Consumer key</strong></p>
+
+<p>The <code class="prettyprint">oauth_consumer_key</code> identifies which application is making the request. You should receive this value when sign up for Whisk API.</p>
+
+<table>
+<tr>
+    <td>oauth_consumer_key</td>
+    <td>80995584</td>
+</tr>
+</table>
+
+<p><strong>Nonce</strong></p>
+
+<p>The <code class="prettyprint">oauth_nonce</code> parameter is a unique token your application should generate for each unique request.
+Whisk will use this value to determine whether a request has been submitted multiple times.
+Any approach which produces a relatively random alphanumeric string should be OK here.</p>
+
+<table>
+<tr>
+    <td>oauth_nonce</td>
+    <td>T1kbXU</td>
+</tr>
+</table>
+
+<p><strong>Signature</strong></p>
+
+<p>The <code class="prettyprint">oauth_signature</code> parameter contains a value which is generated by running all of the other request parameters and secret value through a signing algorithm.
+The purpose of the signature is so that Whisk can verify that the request has not been modified in transit, and verify the application sending the request.</p>
+
+<p>The process for calculating the oauth_signature for this request is described in <a href="#creating-signature">Creating a signature</a>.</p>
+
+<table>
+<tr>
+    <td>oauth_signature</td>
+    <td>ZzVq1pzrooLm+gpjNzF0Yuj6P2I=</td>
+</tr>
+</table>
+
+<p><strong>Signature method</strong></p>
+
+<p>The <code class="prettyprint">oauth_signature_method</code> used by Whisk is HMAC-SHA1. This value should be used for any authorized request sent to Whisk&rsquo;s API.</p>
+
+<table>
+<tr>
+    <td>oauth_signature_method</td>
+    <td>HMAC-SHA1</td>
+</tr>
+</table>
+
+<p><strong>Timestamp</strong></p>
+
+<p>The <code class="prettyprint">oauth_timestamp</code> parameter indicates when the request was created.
+This value should be the number of seconds since the Unix epoch at the point the request is generated, and should be easily generated in most programming languages.
+Whisk could reject requests which were created too far in the past, so it is important to keep the clock of the computer generating requests in sync with NTP.</p>
+
+<table>
+<tr>
+    <td>oauth_timestamp</td>
+    <td>1318622958</td>
+</tr>
+</table>
+
+<p><strong>Version</strong>
+The <code class="prettyprint">oauth_version</code> parameter should always be 1.0 for any request sent to the Whisk API.</p>
+
+<table>
+<tr>
+    <td>oauth_version</td>
+    <td>1.0</td>
+</tr>
+</table>
+
+<h3 id="building-the-header-string">Building the header string</h3>
+
+<p>To build the header string, imagine writing to a string named DST.</p>
+
+<ol>
+<li>Append the string “OAuth ” (including the space at the end) to DST.</li>
+<li>For each key/value pair of the 7 parameters listed above:
+
+<ol>
+<li>Percent encode the key and append it to DST.</li>
+<li>Append the equals character ‘=’ to DST.</li>
+<li>Append a double quote ‘”’ to DST.</li>
+<li>Percent encode the value and append it to DST.</li>
+<li>Append a double quote ‘”’ to DST.</li>
+<li>If there are key/value pairs remaining, append a comma ‘,’ and a space ’ ’ to DST.</li>
+</ol></li>
+</ol>
+
+<p>Pay particular attention to the percent encoding of the values when building this string.
+For example, the oauth_signature value of <code class="prettyprint">ZzVq1pzrooLm+gpjNzF0Yuj6P2I=</code> must be encoded as <code class="prettyprint">ZzVq1pzrooLm%2BgpjNzF0Yuj6P2I%3D</code>.</p>
+
+<p>Performing these steps on the parameters collected above results in the following string:</p>
+
+<p><code class="prettyprint">OAuth oauth_consumer_key=&quot;80995584&quot;,oauth_signature_method=&quot;HMAC-SHA1&quot;,oauth_timestamp=&quot;1318622958&quot;,oauth_nonce=&quot;T1kbXU&quot;,oauth_version=&quot;1.0&quot;,oauth_signature=&quot;ZzVq1pzrooLm%2BgpjNzF0Yuj6P2I%3D&quot;</code></p>
+
+<p>This value should be set as the Authorization header for the request.</p>
+
+<h2 id="creating-signature">Creating Signature</h2>
+
+<p>This section explains how to generate an OAuth 1.0a HMAC-SHA1 signature for a HTTP request.
+This signature will be suitable for passing to the Whisk API as part of an authorized request, as described in <a href="#authorizing-a-request">Authorizing a request</a>.</p>
+
+<p>For the purposes of explanation, we will be using the following client key and secret pair:</p>
+
+<ul>
+<li><code class="prettyprint">consumerKey: 80995584</code></li>
+<li><code class="prettyprint">consumerSecret: b871779c2830e43db0cd8a7c725f514d</code></li>
+</ul>
+
+<p>The request used to demonstrate signing is a <code class="prettyprint">GET</code> request to the <br/> <code class="prettyprint">https://api.whisk.com/inventory/api/basket</code> endpoint.
+The raw request could be seen on the right</p>
+
+<blockquote>
+<p>Raw request data</p>
+</blockquote>
+<pre class="highlight shell"><code><span class="gp">&gt; </span>GET /inventory/v1/basket?recipeUrl<span class="o">=</span>https://www.asdagoodliving.co.uk/food/recipes/banana-fritters&amp;inventory<span class="o">=</span>Asda&amp;region<span class="o">=</span>GB HTTP/1.1
+<span class="gp">&gt; </span>Host: api.whisk.com
+<span class="gp">&gt; </span>User-Agent: curl/7.43.0
+<span class="gp">&gt; </span>Accept: <span class="k">*</span>/<span class="k">*</span>
+</code></pre>
+
+<h3 id="collecting-the-request-method-and-url">Collecting the request method and URL</h3>
+
+<p>To produce a signature, start by determining the HTTP method and URL of the request.
+These two are known when creating the request, so they are easy to obtain.</p>
+
+<p>The request method will almost always be <code class="prettyprint">GET</code> or <code class="prettyprint">POST</code> for Whisk API requests.</p>
+
+<table>
+<tr>
+    <td>HTTP Method</td>
+    <td>POST</td>
+</tr>
+</table>
+
+<p>The base URL is the URL to which the request is directed, minus any query string or hash parameters.
+It is important to use the correct protocol here, so make sure that the “https://” or “http://” portion of the URL matches the actual request sent to the API.
+As a best practice, you should always be using “https://” with the Whisk API.</p>
+
+<table>
+<tr>
+    <td>Base URL</td>
+    <td>https://api.whisk.com/inventory/api/basket</td>
+</tr>
+</table>
+
+<h3 id="collecting-parameters">Collecting parameters</h3>
+
+<p>Next, gather all of the parameters included in the request.
+There are two such locations for these additional parameters - the URL (as part of the querystring) and the request body.</p>
+
+<p>The sample request includes 3 parameters:</p>
+
+<table><thead>
+<tr>
+<th>Parameter</th>
+<th>Value</th>
+</tr>
+</thead><tbody>
+<tr>
+<td>recipeUrl</td>
+<td>https://www.asdagoodliving.co.uk/food/recipes/banana-fritters</td>
+</tr>
+<tr>
+<td>region</td>
+<td>GB</td>
+</tr>
+<tr>
+<td>inventory</td>
+<td>Asda</td>
+</tr>
+</tbody></table>
+
+<p>In the HTTP request the parameters are URL encoded, but you should collect the raw values.
+In addition to the request parameters, every oauth_* parameter needs to be included in the signature, so collect those too.
+Here are the parameters from <a href="#authorizing-a-request">Authorizing a request</a>:</p>
+
+<table><thead>
+<tr>
+<th>Parameter</th>
+<th>Value</th>
+</tr>
+</thead><tbody>
+<tr>
+<td>recipeUrl</td>
+<td>https://www.asdagoodliving.co.uk/food/recipes/banana-fritters</td>
+</tr>
+<tr>
+<td>region</td>
+<td>GB</td>
+</tr>
+<tr>
+<td>inventory</td>
+<td>Asda</td>
+</tr>
+<tr>
+<td>oauth_consumer_key</td>
+<td>80995584</td>
+</tr>
+<tr>
+<td>oauth_nonce</td>
+<td>T1kbXU</td>
+</tr>
+<tr>
+<td>oauth_signature_method</td>
+<td>HMAC-SHA1</td>
+</tr>
+<tr>
+<td>oauth_timestamp</td>
+<td>1318622958</td>
+</tr>
+<tr>
+<td>oauth_version</td>
+<td>1.0</td>
+</tr>
+</tbody></table>
+
+<p>These values need to be encoded into a single string which will be used later on. The process to build the string is very specific:</p>
+
+<ol>
+<li><a href="https://dev.twitter.com/oauth/overview/percent-encoding-parameters">Percent encode</a> every key and value that will be signed.</li>
+<li>Sort the list of parameters alphabetically[1] by encoded key[2].</li>
+<li>For each key/value pair:</li>
+<li>Append the encoded key to the output string.</li>
+<li>Append the ‘=’ character to the output string.</li>
+<li>Append the encoded value to the output string.</li>
+<li>If there are more key/value pairs remaining, append a ‘&amp;’ character to the output string.</li>
+</ol>
+
+<p>The following string will be produced by repeating these steps with the parameters collected above:</p>
+
+<p><code class="prettyprint">inventory=Asda&amp;oauth_consumer_key=80995584&amp;oauth_nonce=T1kbXU&amp;oauth_signature_method=HMAC-SHA1&amp;oauth_timestamp=1318622958&amp;oauth_version=1.0&amp;recipeUrl=https%3A%2F%2Fwww.asdagoodliving.co.uk%2Ffood%2Frecipes%2Fbanana-fritters&amp;region=GB</code></p>
+
+<h3 id="creating-the-signature-base-string">Creating the signature base string</h3>
+
+<p>The three values collected so far must be joined to make a single string, from which the signature will be generated.
+This is called the <strong>signature base string</strong> by the OAuth specification.</p>
+
+<p>To encode the HTTP method, base URL, and parameter string into a single string:</p>
+
+<ol>
+<li>Convert the HTTP Method to uppercase and set the output string equal to this value.</li>
+<li>Append the ‘&amp;’ character to the output string.</li>
+<li>Percent encode the URL and append it to the output string.</li>
+<li>Append the ‘&amp;’ character to the output string.</li>
+<li>Percent encode the parameter string and append it to the output string.</li>
+</ol>
+
+<p>This will produce the following <strong>signature base string</strong>:</p>
+
+<p><code class="prettyprint">GET&amp;https%3A%2F%2Fapi.whisk.com%2Finventory%2Fapi%2Fbasket&amp;inventory%3DAsda%26oauth_consumer_key%3D80995584%26oauth_nonce%3DT1kbXU%26oauth_signature_method%3DHMAC-SHA1%26oauth_timestamp%3D1318622958%26oauth_version%3D1.0%26recipeUrl%3Dhttps%253A%252F%252Fwww.asdagoodliving.co.uk%252Ffood%252Frecipes%252Fbanana-fritters%26region%3DGB</code></p>
+
+<p>Make sure to percent encode the parameter string!
+The signature base string should contain exactly 2 ampersand ‘&amp;’ characters.
+The percent ‘%’ characters in the parameter string should be encoded as %25 in the signature base string.</p>
+
+<h3 id="getting-a-signing-key">Getting a signing key</h3>
+
+<p>The last pieces of data to collect are secrets which identify the application making the request, and the user the request is on behalf of.
+It is very important to note that these values are incredibly sensitive and should never be shared with anyone.</p>
+
+<p>The value which identifies your application to Whisk is called the <strong>consumer secret</strong>.
+This will be the same for every request your application sends.</p>
+
+<table>
+<tr>
+    <td>Consumer secret</td>
+    <td>b871779c2830e43db0cd8a7c725f514d</td>
+</tr>
+</table>
+
+<p>Whisk is not using OAuth token secret, so it is only <code class="prettyprint">consumerSecret</code> which need to be used to form <strong>signing key</strong></p>
+
+<p>The <strong>signing key</strong> is simply the percent encoded consumer secret, followed by an ampersand character ‘&amp;’:</p>
+
+<table>
+<tr>
+    <td>Signing key</td>
+    <td>b871779c2830e43db0cd8a7c725f514d&</td>
+</tr>
+</table>
+
+<h3 id="calculating-the-signature">Calculating the signature</h3>
+
+<p>Finally, the signature is calculated by passing the signature base string and signing key to the HMAC-SHA1 hashing algorithm.
+The details of the algorithm are explained <a href="https://en.wikipedia.org/wiki/Hash-based_message_authentication_code">in depth here</a>, but thankfully there are implementations of HMAC-SHA1 available for every popular language.
+For example, PHP has the <a href="http://php.net/manual/en/function.hash-hmac.php">hash_hmac</a> function.</p>
+
+<p>The output of the HMAC signing function is a binary string.
+This needs to be base64 encoded to produce the signature string.
+That value, when converted to base64, is the OAuth signature for this request:</p>
+
+<table>
+<tr>
+    <td>OAuth signature</td>
+    <td>ZzVq1pzrooLm+gpjNzF0Yuj6P2I=</td>
+</tr>
+</table>
+
+<p>This signature should be submitted as a HTTP header along with the request.</p>
 
 <aside class="notice">
-You must replace <code>meowmeowmeow</code> with your personal API key.
+the key/secret pair in this document are not authorised to access the recipes endpoint.
+You must use your own key/secret pair with the above process to get a valid response.
 </aside>
 
-<h1 id="kittens">Kittens</h1>
+<h1 id="inventory">Inventory</h1>
 
-<h2 id="get-all-kittens">Get All Kittens</h2>
-<pre class="highlight ruby"><code><span class="nb">require</span> <span class="s1">'kittn'</span>
-
-<span class="n">api</span> <span class="o">=</span> <span class="no">Kittn</span><span class="o">::</span><span class="no">APIClient</span><span class="p">.</span><span class="nf">authorize!</span><span class="p">(</span><span class="s1">'meowmeowmeow'</span><span class="p">)</span>
-<span class="n">api</span><span class="p">.</span><span class="nf">kittens</span><span class="p">.</span><span class="nf">get</span>
-</code></pre>
-<pre class="highlight python"><code><span class="kn">import</span> <span class="nn">kittn</span>
-
-<span class="n">api</span> <span class="o">=</span> <span class="n">kittn</span><span class="o">.</span><span class="n">authorize</span><span class="p">(</span><span class="s">'meowmeowmeow'</span><span class="p">)</span>
-<span class="n">api</span><span class="o">.</span><span class="n">kittens</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
-</code></pre>
-<pre class="highlight shell"><code>curl <span class="s2">"http://example.com/api/kittens"</span>
-  -H <span class="s2">"Authorization: meowmeowmeow"</span>
-</code></pre>
-
-<blockquote>
-<p>The above command returns JSON structured like this:</p>
-</blockquote>
-<pre class="highlight json"><code><span class="p">[</span><span class="w">
-  </span><span class="p">{</span><span class="w">
-    </span><span class="nt">"id"</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w">
-    </span><span class="nt">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Fluffums"</span><span class="p">,</span><span class="w">
-    </span><span class="nt">"breed"</span><span class="p">:</span><span class="w"> </span><span class="s2">"calico"</span><span class="p">,</span><span class="w">
-    </span><span class="nt">"fluffiness"</span><span class="p">:</span><span class="w"> </span><span class="mi">6</span><span class="p">,</span><span class="w">
-    </span><span class="nt">"cuteness"</span><span class="p">:</span><span class="w"> </span><span class="mi">7</span><span class="w">
-  </span><span class="p">},</span><span class="w">
-  </span><span class="p">{</span><span class="w">
-    </span><span class="nt">"id"</span><span class="p">:</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span><span class="w">
-    </span><span class="nt">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Max"</span><span class="p">,</span><span class="w">
-    </span><span class="nt">"breed"</span><span class="p">:</span><span class="w"> </span><span class="s2">"unknown"</span><span class="p">,</span><span class="w">
-    </span><span class="nt">"fluffiness"</span><span class="p">:</span><span class="w"> </span><span class="mi">5</span><span class="p">,</span><span class="w">
-    </span><span class="nt">"cuteness"</span><span class="p">:</span><span class="w"> </span><span class="mi">10</span><span class="w">
-  </span><span class="p">}</span><span class="w">
-</span><span class="p">]</span><span class="w">
-</span></code></pre>
-
-<p>This endpoint retrieves all kittens.</p>
+<h2 id="basket-options">Basket options</h2>
 
 <h3 id="http-request">HTTP Request</h3>
 
-<p><code class="prettyprint">GET http://example.com/api/kittens</code></p>
+<p><code class="prettyprint">GET https://api.whisk.com/inventory/v1/basket</code></p>
 
 <h3 id="query-parameters">Query Parameters</h3>
 
 <table><thead>
 <tr>
 <th>Parameter</th>
-<th>Default</th>
+<th>Optional</th>
 <th>Description</th>
 </tr>
 </thead><tbody>
 <tr>
-<td>include_cats</td>
+<td>recipeUrl</td>
 <td>false</td>
-<td>If set to true, the result will also include cats.</td>
+<td>Recipe url to get supermarket options for</td>
 </tr>
 <tr>
-<td>available</td>
-<td>true</td>
-<td>If set to false, the result will include kittens that have already been adopted.</td>
+<td>region</td>
+<td>false</td>
+<td>Geographical region of a store (e.g. GB)</td>
+</tr>
+<tr>
+<td>inventory</td>
+<td>false</td>
+<td>Inventory name (e.g. Asda)</td>
 </tr>
 </tbody></table>
-
-<aside class="success">
-Remember — a happy kitten is an authenticated kitten!
-</aside>
-
-<h2 id="get-a-specific-kitten">Get a Specific Kitten</h2>
-<pre class="highlight ruby"><code><span class="nb">require</span> <span class="s1">'kittn'</span>
-
-<span class="n">api</span> <span class="o">=</span> <span class="no">Kittn</span><span class="o">::</span><span class="no">APIClient</span><span class="p">.</span><span class="nf">authorize!</span><span class="p">(</span><span class="s1">'meowmeowmeow'</span><span class="p">)</span>
-<span class="n">api</span><span class="p">.</span><span class="nf">kittens</span><span class="p">.</span><span class="nf">get</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
-</code></pre>
-<pre class="highlight python"><code><span class="kn">import</span> <span class="nn">kittn</span>
-
-<span class="n">api</span> <span class="o">=</span> <span class="n">kittn</span><span class="o">.</span><span class="n">authorize</span><span class="p">(</span><span class="s">'meowmeowmeow'</span><span class="p">)</span>
-<span class="n">api</span><span class="o">.</span><span class="n">kittens</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
-</code></pre>
-<pre class="highlight shell"><code>curl <span class="s2">"http://example.com/api/kittens/2"</span>
-  -H <span class="s2">"Authorization: meowmeowmeow"</span>
-</code></pre>
 
 <blockquote>
-<p>The above command returns JSON structured like this:</p>
+<p>The endpoint should JSON structured like this:</p>
 </blockquote>
 <pre class="highlight json"><code><span class="p">{</span><span class="w">
-  </span><span class="nt">"id"</span><span class="p">:</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span><span class="w">
-  </span><span class="nt">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Max"</span><span class="p">,</span><span class="w">
-  </span><span class="nt">"breed"</span><span class="p">:</span><span class="w"> </span><span class="s2">"unknown"</span><span class="p">,</span><span class="w">
-  </span><span class="nt">"fluffiness"</span><span class="p">:</span><span class="w"> </span><span class="mi">5</span><span class="p">,</span><span class="w">
-  </span><span class="nt">"cuteness"</span><span class="p">:</span><span class="w"> </span><span class="mi">10</span><span class="w">
+  </span><span class="nt">"ingredients"</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w"> </span><span class="p">{</span><span class="w">
+    </span><span class="nt">"text"</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="s2">"125g flour"</span><span class="p">,</span><span class="w">
+    </span><span class="nt">"items"</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w"> </span><span class="p">{</span><span class="w">
+      </span><span class="nt">"canonicalProduct"</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="s2">"FLOUR"</span><span class="p">,</span><span class="w">
+      </span><span class="nt">"rawAmount"</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="s2">"125G"</span><span class="p">,</span><span class="w">
+      </span><span class="nt">"matchedItems"</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w"> </span><span class="p">{</span><span class="w">
+        </span><span class="nt">"item"</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+          </span><span class="nt">"whiskItemId"</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="s2">"asda|19230"</span><span class="p">,</span><span class="w">
+          </span><span class="nt">"sku"</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="s2">"19230"</span><span class="p">,</span><span class="w">
+          </span><span class="nt">"name"</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="s2">"ASDA Plain Flour"</span><span class="p">,</span><span class="w">
+          </span><span class="nt">"price"</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="mi">40</span><span class="p">,</span><span class="w">
+          </span><span class="nt">"currency"</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="s2">"GBX"</span><span class="p">,</span><span class="w">
+          </span><span class="nt">"url"</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="s2">"http://groceries.asda.com/asda-webstore/landing/home.shtml#/product/19230"</span><span class="p">,</span><span class="w">
+          </span><span class="nt">"imageUrl"</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="s2">"https://whisk-res.cloudinary.com/image/upload/v1457833859/storeitems/asda/8b6abc81ce1d236f6d4bd44bdded7713.jpg"</span><span class="p">,</span><span class="w">
+          </span><span class="nt">"amount"</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="s2">"500G"</span><span class="p">,</span><span class="w">
+          </span><span class="nt">"unitPrice"</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="mi">80</span><span class="p">,</span><span class="w">
+          </span><span class="nt">"unitSize"</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="s2">"kg"</span><span class="p">,</span><span class="w">
+          </span><span class="nt">"brand"</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="s2">"ASDA"</span><span class="p">,</span><span class="w">
+          </span><span class="nt">"storeDepartment"</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="s2">"Home Baking, Sugar &amp; Desserts"</span><span class="w">
+        </span><span class="p">},</span><span class="w">
+        </span><span class="nt">"qty"</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="mf">0.25</span><span class="w">
+      </span><span class="p">},</span><span class="w"> </span><span class="p">{</span><span class="w">
+        </span><span class="nt">"item"</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+          </span><span class="nt">"whiskItemId"</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="s2">"asda|25473"</span><span class="p">,</span><span class="w">
+          </span><span class="nt">"sku"</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="s2">"25473"</span><span class="p">,</span><span class="w">
+          </span><span class="nt">"name"</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="s2">"ASDA Smartprice White Plain Flour"</span><span class="p">,</span><span class="w">
+          </span><span class="nt">"price"</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="mi">45</span><span class="p">,</span><span class="w">
+          </span><span class="nt">"currency"</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="s2">"GBX"</span><span class="p">,</span><span class="w">
+          </span><span class="nt">"url"</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="s2">"http://groceries.asda.com/asda-webstore/landing/home.shtml#/product/25473"</span><span class="p">,</span><span class="w">
+          </span><span class="nt">"imageUrl"</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="s2">"https://whisk-res.cloudinary.com/image/upload/v1457834088/storeitems/asda/7174c4d887e46a4ab44c9cb416e3551f.jpg"</span><span class="p">,</span><span class="w">
+          </span><span class="nt">"amount"</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="s2">"1.5KG"</span><span class="p">,</span><span class="w">
+          </span><span class="nt">"unitPrice"</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="mi">30</span><span class="p">,</span><span class="w">
+          </span><span class="nt">"unitSize"</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="s2">"kg"</span><span class="p">,</span><span class="w">
+          </span><span class="nt">"brand"</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="s2">"ASDA SMART PRICE"</span><span class="p">,</span><span class="w">
+          </span><span class="nt">"storeDepartment"</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="s2">"Home Baking, Sugar &amp; Desserts"</span><span class="w">
+        </span><span class="p">},</span><span class="w">
+        </span><span class="nt">"qty"</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="mf">0.08333333333333333</span><span class="w">
+      </span><span class="p">},</span><span class="w"> </span><span class="err">...</span><span class="w"> </span><span class="p">]</span><span class="w">
+    </span><span class="p">}</span><span class="w"> </span><span class="p">]</span><span class="w">
+  </span><span class="p">},</span><span class="w"> </span><span class="err">...</span><span class="p">]</span><span class="w">
 </span><span class="p">}</span><span class="w">
 </span></code></pre>
-
-<p>This endpoint retrieves a specific kitten.</p>
-
-<aside class="warning">Inside HTML code blocks like this one, you can&rsquo;t use Markdown, so use <code>&lt;code&gt;</code> blocks to denote code.</aside>
-
-<h3 id="http-request">HTTP Request</h3>
-
-<p><code class="prettyprint">GET http://example.com/kittens/&lt;ID&gt;</code></p>
-
-<h3 id="url-parameters">URL Parameters</h3>
-
-<table><thead>
-<tr>
-<th>Parameter</th>
-<th>Description</th>
-</tr>
-</thead><tbody>
-<tr>
-<td>ID</td>
-<td>The ID of the kitten to retrieve</td>
-</tr>
-</tbody></table>
-
-          <h1 id="errors">Errors</h1>
-
-<aside class="notice">This error section is stored in a separate file in `includes/_errors.md`. Slate allows you to optionally separate out your docs into many files&hellip;just save them to the `includes` folder and add them to the top of your `index.md`&rsquo;s frontmatter. Files are included in the order listed.</aside>
-
-<p>The Kittn API uses the following error codes:</p>
-
-<table><thead>
-<tr>
-<th>Error Code</th>
-<th>Meaning</th>
-</tr>
-</thead><tbody>
-<tr>
-<td>400</td>
-<td>Bad Request &ndash; Your request sucks</td>
-</tr>
-<tr>
-<td>401</td>
-<td>Unauthorized &ndash; Your API key is wrong</td>
-</tr>
-<tr>
-<td>403</td>
-<td>Forbidden &ndash; The kitten requested is hidden for administrators only</td>
-</tr>
-<tr>
-<td>404</td>
-<td>Not Found &ndash; The specified kitten could not be found</td>
-</tr>
-<tr>
-<td>405</td>
-<td>Method Not Allowed &ndash; You tried to access a kitten with an invalid method</td>
-</tr>
-<tr>
-<td>406</td>
-<td>Not Acceptable &ndash; You requested a format that isn&rsquo;t json</td>
-</tr>
-<tr>
-<td>410</td>
-<td>Gone &ndash; The kitten requested has been removed from our servers</td>
-</tr>
-<tr>
-<td>418</td>
-<td>I&rsquo;m a teapot</td>
-</tr>
-<tr>
-<td>429</td>
-<td>Too Many Requests &ndash; You&rsquo;re requesting too many kittens! Slow down!</td>
-</tr>
-<tr>
-<td>500</td>
-<td>Internal Server Error &ndash; We had a problem with our server. Try again later.</td>
-</tr>
-<tr>
-<td>503</td>
-<td>Service Unavailable &ndash; We&rsquo;re temporarially offline for maintanance. Please try again later.</td>
-</tr>
-</tbody></table>
 
       </div>
       <div class="dark-box">
           <div class="lang-selector">
                 <a href="#" data-language-name="shell">shell</a>
-                <a href="#" data-language-name="ruby">ruby</a>
-                <a href="#" data-language-name="python">python</a>
           </div>
       </div>
     </div>
